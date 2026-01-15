@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>華語學習者等級判斷大師</title>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --success-color: #4CAF50;
+            --error-color: #F44336;
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --shadow: 0 4px 15px rgba(0,0,0,0.1);
+            --radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            /* 允許 body 內容在極小螢幕上捲動 */
+            overflow-y: auto; 
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            /* 使用 dvh 應對手機瀏覽器網址列伸縮，回退使用 vh */
+            height: 85vh;
+            height: 85dvh; 
+            max-height: 800px;
+            /* 確保容器本身不會變得比螢幕還高而無法看到全貌 */
+            margin: auto;
+        }
+
+        /* Header */
+        header {
+            background: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--success-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Game Area - 修正捲動問題的核心 */
+        .game-area {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            /* 關鍵修正：允許內容溢出時垂直捲動 */
+            overflow-y: auto; 
+            /* 讓 iOS 捲動更平滑 */
+            -webkit-overflow-scrolling: touch; 
+        }
+
+        .question-card {
+            width: 100%;
+            background: #fff;
+            padding: 30px 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #eef2f7;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+            flex-shrink: 0; /* 防止題目卡被壓縮 */
+        }
+
+        .category-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            font-weight: bold;
+            background: #eee;
+            color: #666;
+        }
+
+        .question-text {
+            font-size: 1.5rem;
+            line-height: 1.6;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        /* Feedback Overlay */
+        .feedback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .feedback.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .feedback-icon {
+            font-size: 4rem;
+            margin-bottom: 10px;
+        }
+
+        .feedback-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .feedback-detail {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .next-btn {
+            padding: 12px 30px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(74, 144, 226, 0.3);
+        }
+
+        /* Options */
+        .options-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            /* 將選項推到底部，若空間不足則需捲動 */
+            margin-top: auto; 
+            flex-shrink: 0;
+            padding-bottom: 10px; /* 增加底部留白 */
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 60px; /* 確保按鈕有足夠點擊面積 */
+        }
+
+        .option-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Level Colors */
+        .btn-elementary { border-color: #81C784; color: #2E7D32; }
+        .btn-intermediate { border-color: #64B5F6; color: #1565C0; }
+        .btn-advanced { border-color: #E57373; color: #C62828; }
+
+        .btn-elementary:hover { background: #E8F5E9; }
+        .btn-intermediate:hover { background: #E3F2FD; }
+        .btn-advanced:hover { background: #FFEBEE; }
+
+        /* Start & End Screens */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--card-bg);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .screen.hidden {
+            display: none;
+        }
+
+        .screen h1 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .screen p {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .start-btn, .restart-btn {
+            background: linear-gradient(135deg, #4A90E2, #50E3C2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .start-btn:active, .restart-btn:active {
+            transform: scale(0.95);
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 20px 0;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: fall 3s linear infinite;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(720deg); }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        等級判斷大挑戰
+        <div style="font-size: 0.8rem; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+            根據學生特色、需求與困難
+        </div>
+    </header>
+    
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="game-area">
+        <div class="question-card" id="questionCard">
+            <span class="category-tag" id="categoryTag">特色</span>
+            <div class="question-text" id="questionText">題目載入中...</div>
+        </div>
+
+        <div class="feedback" id="feedbackOverlay">
+            <div class="feedback-icon" id="feedbackIcon">✅</div>
+            <div class="feedback-text" id="feedbackTitle">答對了！</div>
+            <div class="feedback-detail" id="feedbackDetail">這是初級學習者的特徵。</div>
+            <button class="next-btn" onclick="nextQuestion()">下一題</button>
+        </div>
+
+        <div class="options-grid">
+            <button class="option-btn btn-elementary" onclick="checkAnswer('Elementary')">初級 (Novice)</button>
+            <button class="option-btn btn-intermediate" onclick="checkAnswer('Intermediate')">中級 (Intermediate)</button>
+            <button class="option-btn btn-advanced" onclick="checkAnswer('Advanced')">高級 (Advanced)</button>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div class="screen" id="startScreen">
+        <h1>👨‍🏫 華語師資<br>等級判斷大師</h1>
+        <p>你能不能準確分辨初級、中級和高級學習者的不同？<br><br>這是一個針對華語教學實務設計的練習，包含學生的特色、需求與困難。</p>
+        <button class="start-btn" onclick="startGame()">開始挑戰</button>
+    </div>
+
+    <!-- End Screen -->
+    <div class="screen hidden" id="endScreen">
+        <h1>挑戰完成！</h1>
+        <p>你的得分是</p>
+        <div class="score-display"><span id="finalScore">0</span> / <span id="totalQuestions">0</span></div>
+        <p id="feedbackMessage">太棒了！</p>
+        <button class="restart-btn" onclick="startGame()">再玩一次</button>
+    </div>
+</div>
+
+<script>
+    // 題目資料庫 (根據講義內容製作)
+    const questionsData = [
+        // 初級
+        { text: "山腳下的探索者", category: "比喻", level: "Elementary", explain: "這是對初級學習者的形象比喻，只能在山腳下進行基本探索。" },
+        { text: "只能使用記憶中的單詞和短語進行交流", category: "特色", level: "Elementary", explain: "初級學習者主要依賴死記硬背的固定短語。" },
+        { text: "聽力僅能聽懂關鍵詞、問候語", category: "能力表現", level: "Elementary", explain: "初級階段的聽力重點在於抓關鍵字。" },
+        { text: "需要大量的「正音」練習", category: "需求", level: "Elementary", explain: "初級階段發音基礎最為重要。" },
+        { text: "覺得「聲調」很難", category: "困難", level: "Elementary", explain: "這是初級學習者最常見的痛點之一。" },
+        { text: "需要圖片輔助理解", category: "需求", level: "Elementary", explain: "初級教學非常依賴視覺輔助。" },
+        
+        // 中級
+        { text: "沿著步道前行", category: "比喻", level: "Intermediate", explain: "比喻中級學習者已開始有路徑可循，能處理日常情境。" },
+        { text: "能創造性地使用句子表達個人想法", category: "特色", level: "Intermediate", explain: "中級的關鍵突破在於「創造性」使用語言，而非背誦。" },
+        { text: "能處理日常情境與簡單對話", category: "能力表現", level: "Intermediate", explain: "中級學習者能應付生活中的大部分基本需求。" },
+        { text: "需要「增加詞彙量」與「拉長句子」", category: "需求", level: "Intermediate", explain: "中級階段需要擴充詞彙並練習產出更長的語句。" },
+        { text: "覺得「語速快、句子長」是困難點", category: "困難", level: "Intermediate", explain: "對於母語者的正常語速和長句感到吃力是中級的特徵。" },
+        
+        // 高級
+        { text: "探索更廣闊的地形", category: "比喻", level: "Advanced", explain: "高級學習者能處理廣泛且複雜的議題。" },
+        { text: "能以段落為單位進行詳細敘述", category: "特色", level: "Advanced", explain: "高級程度要求能組織「段落」篇章，而非單句。" },
+        { text: "能聽懂新聞、故事，掌握主旨與細節", category: "能力表現", level: "Advanced", explain: "高級學習者能處理真實語料如新聞報導。" },
+        { text: "需要學習「專業表達」與「文化討論」", category: "需求", level: "Advanced", explain: "高級階段進入專業領域與深層文化議題的探討。" },
+        { text: "分辨「書面語」與「口語」的差異", category: "困難/需求", level: "Advanced", explain: "高級階段開始大量接觸書面語，需區分語體。" }
+    ];
+
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+
+    function startGame() {
+        // 洗牌題目
+        currentQuestions = [...questionsData].sort(() => Math.random() - 0.5);
+        currentIndex = 0;
+        score = 0;
+        
+        document.getElementById('startScreen').classList.add('hidden');
+        document.getElementById('endScreen').classList.add('hidden');
+        updateProgress();
+        showQuestion();
+    }
+
+    function showQuestion() {
+        const q = currentQuestions[currentIndex];
+        document.getElementById('categoryTag').innerText = q.category;
+        document.getElementById('questionText').innerText = q.text;
+        document.getElementById('feedbackOverlay').classList.remove('show');
+        
+        // 重置顏色
+        const catTag = document.getElementById('categoryTag');
+        if(q.category === "困難") catTag.style.background = "#ffebee";
+        else if(q.category === "需求") catTag.style.background = "#e3f2fd";
+        else catTag.style.background = "#eee";
+    }
+
+    function checkAnswer(selectedLevel) {
+        const q = currentQuestions[currentIndex];
+        const isCorrect = selectedLevel === q.level;
+        
+        const feedbackOverlay = document.getElementById('feedbackOverlay');
+        const feedbackIcon = document.getElementById('feedbackIcon');
+        const feedbackTitle = document.getElementById('feedbackTitle');
+        const feedbackDetail = document.getElementById('feedbackDetail');
+
+        if (isCorrect) {
+            score++;
+            feedbackIcon.innerText = "🎉";
+            feedbackTitle.innerText = "答對了！";
+            feedbackTitle.style.color = "var(--success-color)";
+        } else {
+            feedbackIcon.innerText = "💡";
+            feedbackTitle.innerText = "再想一下...";
+            feedbackTitle.style.color = "var(--error-color)";
+        }
+
+        // 顯示正確答案的中文名稱
+        let levelName = "";
+        if (q.level === "Elementary") levelName = "初級";
+        if (q.level === "Intermediate") levelName = "中級";
+        if (q.level === "Advanced") levelName = "高級";
+
+        feedbackDetail.innerHTML = `這是 <strong>${levelName}</strong> 的特徵。<br>${q.explain}`;
+        feedbackOverlay.classList.add('show');
+        
+        updateProgress();
+    }
+
+    function nextQuestion() {
+        currentIndex++;
+        if (currentIndex < currentQuestions.length) {
+            showQuestion();
+        } else {
+            endGame();
+        }
+    }
+
+    function updateProgress() {
+        const progress = ((currentIndex) / currentQuestions.length) * 100;
+        document.getElementById('progressBar').style.width = `${progress}%`;
+    }
+
+    function endGame() {
+        document.getElementById('endScreen').classList.remove('hidden');
+        document.getElementById('finalScore').innerText = score;
+        document.getElementById('totalQuestions').innerText = currentQuestions.length;
+        
+        const percentage = (score / currentQuestions.length) * 100;
+        let message = "";
+        if (percentage === 100) message = "太神了！你是教學大師！ 🏆";
+        else if (percentage >= 80) message = "很棒！觀念非常清楚！ 👏";
+        else if (percentage >= 60) message = "不錯喔，再加油一下！ 💪";
+        else message = "沒關係，多練習幾次就熟了！ 📚";
+        
+        document.getElementById('feedbackMessage').innerText = message;
+    }
+</script>
+
+</body>
+</html>
